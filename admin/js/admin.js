@@ -66,4 +66,28 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Viewing booking:', bookingId);
         });
     });
-}); 
+
+    // Form validation
+    const addRoomForm = document.getElementById('addRoomForm');
+    if (addRoomForm) {
+        addRoomForm.addEventListener('submit', function(e) {
+            const required = ['room_number', 'room_type', 'floor_number', 'capacity', 'price_per_night'];
+            let isValid = true;
+
+            required.forEach(field => {
+                const input = this.querySelector(`[name="${field}"]`);
+                if (!input.value.trim()) {
+                    isValid = false;
+                    input.classList.add('is-invalid');
+                } else {
+                    input.classList.remove('is-invalid');
+                }
+            });
+
+            if (!isValid) {
+                e.preventDefault();
+                alert('Please fill in all required fields');
+            }
+        });
+    }
+});

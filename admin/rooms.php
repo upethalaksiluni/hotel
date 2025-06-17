@@ -151,14 +151,20 @@ $rooms_result = $conn->query($rooms_query);
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
+                    <!-- Update the form -->
                     <form id="addRoomForm" action="process_room.php" method="POST">
+                        <input type="hidden" name="action" value="add"> <!-- Add this line -->
                         <div class="mb-3">
                             <label class="form-label">Room Number</label>
                             <input type="text" class="form-control" name="room_number" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Room Type</label>
-                            <input type="text" class="form-control" name="room_type" required>
+                            <select class="form-control" name="room_type" required>
+                                <option value="Deluxe Lake View">Deluxe Lake View</option>
+                                <option value="Premier Ocean View">Premier Ocean View</option>
+                                <option value="Executive Suite">Executive Suite</option>
+                            </select>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Floor Number</label>
