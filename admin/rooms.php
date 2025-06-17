@@ -1,3 +1,44 @@
+<?php
+session_start();
+require_once '../config/database.php';
+
+// Check if user is logged in and is admin
+if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'admin') {
+    header('Location: ../login.php');
+    exit();
+}
+
+// Fetch all rooms with their facilities
+$rooms_query = "
+    SELECT r.*, 
+           GROUP_CONCAT(DISTINCT rf.name ORDER BY rf.name SEPARATOR ', ') as facility_names,
+           GROUP_CONCAT(DISTINCT rf.id ORDER BY rf.id) as facility_ids
+    FROM rooms r 
+    LEFT JOIN room_facility_mapping rfm ON r.id = rfm.room_id 
+    LEFT JOIN room_facilities rf ON rfm.facility_id = rf.id
+    GROUP BY r.id
+    ORDER BY r.floor_number, r.room_number
+";
+
+$rooms_result = $conn->query($rooms_query);
+
+// Fetch all available facilities for the form
+$facilities_query = "SELECT id, name, description, icon FROM room_facilities ORDER BY name";
+$facilities_result = $conn->query($facilities_query);
+$facilities = [];
+while ($facility = $facilities_result->fetch_assoc()) {
+    $facilities[] = $facility;
+}
+
+// Count rooms by status
+$stats_query = "SELECT status, COUNT(*) as count FROM rooms GROUP BY status";
+$stats_result = $conn->query($stats_query);
+$stats = ['available' => 0, 'occupied' => 0, 'maintenance' => 0];
+while ($stat = $stats_result->fetch_assoc()) {
+    $stats[$stat['status']] = $stat['count'];
+}
+$total_rooms = array_sum($stats);
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -241,6 +282,14 @@
             background-color: #fef3c7;
             color: #92400e;
         }
+
+        .loading {
+            display: none;
+        }
+
+        .loading.show {
+            display: inline-block;
+        }
     </style>
 </head>
 
@@ -313,6 +362,27 @@
         <!-- Page Content -->
         <div id="content">
             <div class="container-fluid">
+                <!-- Success/Error Messages -->
+                <?php if (isset($_SESSION['success'])): ?>
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <?php 
+                        echo $_SESSION['success'];
+                        unset($_SESSION['success']);
+                        ?>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (isset($_SESSION['error'])): ?>
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <?php 
+                        echo $_SESSION['error'];
+                        unset($_SESSION['error']);
+                        ?>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                <?php endif; ?>
+
                 <!-- Header -->
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
@@ -331,7 +401,7 @@
                             <div class="card-body text-center">
                                 <i class="fas fa-bed fa-2x text-primary mb-2"></i>
                                 <h5 class="card-title">Total Rooms</h5>
-                                <h3 class="text-primary">45</h3>
+                                <h3 class="text-primary"><?php echo $total_rooms; ?></h3>
                             </div>
                         </div>
                     </div>
@@ -340,7 +410,7 @@
                             <div class="card-body text-center">
                                 <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
                                 <h5 class="card-title">Available</h5>
-                                <h3 class="text-success">28</h3>
+                                <h3 class="text-success"><?php echo $stats['available']; ?></h3>
                             </div>
                         </div>
                     </div>
@@ -349,7 +419,7 @@
                             <div class="card-body text-center">
                                 <i class="fas fa-user-check fa-2x text-warning mb-2"></i>
                                 <h5 class="card-title">Occupied</h5>
-                                <h3 class="text-warning">15</h3>
+                                <h3 class="text-warning"><?php echo $stats['occupied']; ?></h3>
                             </div>
                         </div>
                     </div>
@@ -358,7 +428,7 @@
                             <div class="card-body text-center">
                                 <i class="fas fa-tools fa-2x text-danger mb-2"></i>
                                 <h5 class="card-title">Maintenance</h5>
-                                <h3 class="text-danger">2</h3>
+                                <h3 class="text-danger"><?php echo $stats['maintenance']; ?></h3>
                             </div>
                         </div>
                     </div>
@@ -387,106 +457,33 @@
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    <?php while ($room = $rooms_result->fetch_assoc()): ?>
                                     <tr>
-                                        <td><strong>101</strong></td>
-                                        <td>Deluxe Lake View</td>
-                                        <td>1st Floor</td>
-                                        <td>2 Guests</td>
-                                        <td><strong>$150.00</strong></td>
+                                        <td><strong><?php echo htmlspecialchars($room['room_number']); ?></strong></td>
+                                        <td><?php echo htmlspecialchars($room['room_type']); ?></td>
+                                        <td><?php echo $room['floor_number']; ?><?php echo $room['floor_number'] == 1 ? 'st' : ($room['floor_number'] == 2 ? 'nd' : ($room['floor_number'] == 3 ? 'rd' : 'th')); ?> Floor</td>
+                                        <td><?php echo $room['capacity']; ?> Guests</td>
+                                        <td><strong>$<?php echo number_format($room['price_per_night'], 2); ?></strong></td>
                                         <td>
-                                            <select class="form-select form-select-sm">
-                                                <option value="available" selected>Available</option>
-                                                <option value="occupied">Occupied</option>
-                                                <option value="maintenance">Maintenance</option>
+                                            <select class="form-select form-select-sm status-select" data-room-id="<?php echo $room['id']; ?>">
+                                                <option value="available" <?php echo $room['status'] == 'available' ? 'selected' : ''; ?>>Available</option>
+                                                <option value="occupied" <?php echo $room['status'] == 'occupied' ? 'selected' : ''; ?>>Occupied</option>
+                                                <option value="maintenance" <?php echo $room['status'] == 'maintenance' ? 'selected' : ''; ?>>Maintenance</option>
                                             </select>
                                         </td>
                                         <td>
-                                            <small class="text-muted">WiFi, AC, TV, Mini Bar</small>
+                                            <small class="text-muted"><?php echo htmlspecialchars($room['facility_names'] ?: 'No facilities'); ?></small>
                                         </td>
                                         <td>
-                                            <button class="btn btn-sm btn-info me-1" onclick="editRoom(1)">
+                                            <button class="btn btn-sm btn-info me-1" onclick="editRoom(<?php echo $room['id']; ?>)">
                                                 <i class="fas fa-edit"></i>
                                             </button>
-                                            <button class="btn btn-sm btn-danger" onclick="deleteRoom(1)">
+                                            <button class="btn btn-sm btn-danger" onclick="deleteRoom(<?php echo $room['id']; ?>)">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </td>
                                     </tr>
-                                    <tr>
-                                        <td><strong>102</strong></td>
-                                        <td>Premier Ocean View</td>
-                                        <td>1st Floor</td>
-                                        <td>3 Guests</td>
-                                        <td><strong>$220.00</strong></td>
-                                        <td>
-                                            <select class="form-select form-select-sm">
-                                                <option value="available">Available</option>
-                                                <option value="occupied" selected>Occupied</option>
-                                                <option value="maintenance">Maintenance</option>
-                                            </select>
-                                        </td>
-                                        <td>
-                                            <small class="text-muted">WiFi, AC, TV, Mini Bar, Balcony</small>
-                                        </td>
-                                        <td>
-                                            <button class="btn btn-sm btn-info me-1" onclick="editRoom(2)">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-danger" onclick="deleteRoom(2)">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>201</strong></td>
-                                        <td>Executive Suite</td>
-                                        <td>2nd Floor</td>
-                                        <td>4 Guests</td>
-                                        <td><strong>$350.00</strong></td>
-                                        <td>
-                                            <select class="form-select form-select-sm">
-                                                <option value="available" selected>Available</option>
-                                                <option value="occupied">Occupied</option>
-                                                <option value="maintenance">Maintenance</option>
-                                            </select>
-                                        </td>
-                                        <td>
-                                            <small class="text-muted">WiFi, AC, TV, Mini Bar, Jacuzzi, Living Room</small>
-                                        </td>
-                                        <td>
-                                            <button class="btn btn-sm btn-info me-1" onclick="editRoom(3)">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-danger" onclick="deleteRoom(3)">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>202</strong></td>
-                                        <td>Deluxe Lake View</td>
-                                        <td>2nd Floor</td>
-                                        <td>2 Guests</td>
-                                        <td><strong>$160.00</strong></td>
-                                        <td>
-                                            <select class="form-select form-select-sm">
-                                                <option value="available">Available</option>
-                                                <option value="occupied">Occupied</option>
-                                                <option value="maintenance" selected>Maintenance</option>
-                                            </select>
-                                        </td>
-                                        <td>
-                                            <small class="text-muted">WiFi, AC, TV, Mini Bar</small>
-                                        </td>
-                                        <td>
-                                            <button class="btn btn-sm btn-info me-1" onclick="editRoom(4)">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-danger" onclick="deleteRoom(4)">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
+                                    <?php endwhile; ?>
                                 </tbody>
                             </table>
                         </div>
@@ -504,8 +501,9 @@
                     <h5 class="modal-title">Add New Room</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
-                    <form id="addRoomForm">
+                <form action="process_room.php" method="POST" enctype="multipart/form-data">
+                    <div class="modal-body">
+                        <input type="hidden" name="action" value="add">
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
@@ -521,6 +519,8 @@
                                         <option value="Deluxe Lake View">Deluxe Lake View</option>
                                         <option value="Premier Ocean View">Premier Ocean View</option>
                                         <option value="Executive Suite">Executive Suite</option>
+                                        <option value="Standard Room">Standard Room</option>
+                                        <option value="Presidential Suite">Presidential Suite</option>
                                     </select>
                                 </div>
                             </div>
@@ -529,19 +529,19 @@
                             <div class="col-md-4">
                                 <div class="mb-3">
                                     <label class="form-label">Floor Number</label>
-                                    <input type="number" class="form-control" name="floor_number" required>
+                                    <input type="number" class="form-control" name="floor_number" min="1" required>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="mb-3">
                                     <label class="form-label">Capacity</label>
-                                    <input type="number" class="form-control" name="capacity" required>
+                                    <input type="number" class="form-control" name="capacity" min="1" required>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="mb-3">
                                     <label class="form-label">Price per Night</label>
-                                    <input type="number" step="0.01" class="form-control" name="price_per_night" required>
+                                    <input type="number" step="0.01" class="form-control" name="price_per_night" min="0" required>
                                 </div>
                             </div>
                         </div>
@@ -552,62 +552,31 @@
                         <div class="mb-3">
                             <label class="form-label">Facilities</label>
                             <div class="row">
+                                <?php foreach ($facilities as $facility): ?>
                                 <div class="col-md-6">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="facilities[]" value="wifi">
+                                        <input class="form-check-input" type="checkbox" name="facilities[]" value="<?php echo $facility['id']; ?>">
                                         <label class="form-check-label">
-                                            <i class="fas fa-wifi"></i> WiFi
+                                            <i class="<?php echo $facility['icon'] ?: 'fas fa-check'; ?>"></i> <?php echo htmlspecialchars($facility['name']); ?>
                                         </label>
                                     </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="facilities[]" value="ac">
-                                        <label class="form-check-label">
-                                            <i class="fas fa-snowflake"></i> Air Conditioning
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="facilities[]" value="tv">
-                                        <label class="form-check-label">
-                                            <i class="fas fa-tv"></i> Television
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="facilities[]" value="minibar">
-                                        <label class="form-check-label">
-                                            <i class="fas fa-glass-martini-alt"></i> Mini Bar
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="facilities[]" value="balcony">
-                                        <label class="form-check-label">
-                                            <i class="fas fa-door-open"></i> Balcony
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="facilities[]" value="jacuzzi">
-                                        <label class="form-check-label">
-                                            <i class="fas fa-hot-tub"></i> Jacuzzi
-                                        </label>
-                                    </div>
-                                </div>
+                                <?php endforeach; ?>
                             </div>
                         </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="addRoom()">Add Room</button>
-                </div>
+                        <div class="mb-3">
+                            <label class="form-label">Room Image</label>
+                            <input type="file" class="form-control" name="room_image" accept="image/*">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <span class="loading spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                            Add Room
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -620,8 +589,9 @@
                     <h5 class="modal-title">Edit Room</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
-                    <form id="editRoomForm">
+                <form action="process_room.php" method="POST" enctype="multipart/form-data">
+                    <div class="modal-body">
+                        <input type="hidden" name="action" value="edit">
                         <input type="hidden" name="room_id" id="edit_room_id">
                         <div class="row">
                             <div class="col-md-6">
@@ -637,6 +607,8 @@
                                         <option value="Deluxe Lake View">Deluxe Lake View</option>
                                         <option value="Premier Ocean View">Premier Ocean View</option>
                                         <option value="Executive Suite">Executive Suite</option>
+                                        <option value="Standard Room">Standard Room</option>
+                                        <option value="Presidential Suite">Presidential Suite</option>
                                     </select>
                                 </div>
                             </div>
@@ -645,19 +617,19 @@
                             <div class="col-md-4">
                                 <div class="mb-3">
                                     <label class="form-label">Floor Number</label>
-                                    <input type="number" class="form-control" name="floor_number" id="edit_floor_number" required>
+                                    <input type="number" class="form-control" name="floor_number" id="edit_floor_number" min="1" required>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="mb-3">
                                     <label class="form-label">Capacity</label>
-                                    <input type="number" class="form-control" name="capacity" id="edit_capacity" required>
+                                    <input type="number" class="form-control" name="capacity" id="edit_capacity" min="1" required>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="mb-3">
                                     <label class="form-label">Price per Night</label>
-                                    <input type="number" step="0.01" class="form-control" name="price_per_night" id="edit_price_per_night" required>
+                                    <input type="number" step="0.01" class="form-control" name="price_per_night" id="edit_price_per_night" min="0" required>
                                 </div>
                             </div>
                         </div>
@@ -666,14 +638,53 @@
                             <textarea class="form-control" name="description" id="edit_description" rows="3"></textarea>
                         </div>
                         <div class="mb-3">
+                            <label class="form-label">Facilities</label>
+                            <div class="row" id="edit_facilities_container">
+                                <?php foreach ($facilities as $facility): ?>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input edit-facility-checkbox" type="checkbox" name="facilities[]" value="<?php echo $facility['id']; ?>" id="edit_facility_<?php echo $facility['id']; ?>">
+                                        <label class="form-check-label" for="edit_facility_<?php echo $facility['id']; ?>">
+                                            <i class="<?php echo $facility['icon'] ?: 'fas fa-check'; ?>"></i> <?php echo htmlspecialchars($facility['name']); ?>
+                                        </label>
+                                    </div>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <div class="mb-3">
                             <label class="form-label">Room Image</label>
                             <input type="file" class="form-control" name="room_image" accept="image/*">
+                            <small class="text-muted">Leave empty to keep current image</small>
                         </div>
-                    </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <span class="loading spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                            Update Room
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteRoomModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this room? This action cannot be undone.</p>
+                    <p><strong>Room: <span id="delete_room_info"></span></strong></p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="updateRoom()">Update Room</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete Room</button>
                 </div>
             </div>
         </div>
@@ -681,55 +692,13 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Sidebar Toggle Functionality
-        document.addEventListener('DOMContentLoaded', function() {
-            const sidebarToggle = document.getElementById('sidebarToggle');
-            const sidebar = document.getElementById('sidebar');
-            const content = document.getElementById('content');
-            const body = document.body;
-
-            sidebarToggle.addEventListener('click', function() {
-                if (window.innerWidth <= 768) {
-                    sidebar.classList.toggle('show');
-                    body.classList.toggle('sidebar-open');
-                } else {
-                    sidebar.classList.toggle('hidden');
-                    content.classList.toggle('expanded');
-                }
-            });
-
-            // Close sidebar when clicking outside on mobile
-            document.addEventListener('click', function(e) {
-                if (window.innerWidth <= 768) {
-                    if (!sidebar.contains(e.target) && !sidebarToggle.contains(e.target)) {
-                        sidebar.classList.remove('show');
-                        body.classList.remove('sidebar-open');
-                    }
-                }
-            });
-
-            // Handle window resize
-            window.addEventListener('resize', function() {
-                if (window.innerWidth > 768) {
-                    sidebar.classList.remove('show');
-                    body.classList.remove('sidebar-open');
-                }
-            });
-        });
-
-        // Room Management Functions
-        function editRoom(roomId) {
-            // Sample data - in real application, fetch from server
-            const sampleData = {
-                1: { room_number: '101', room_type: 'Deluxe Lake View', floor_number: 1, capacity: 2, price_per_night: 150.00, description: 'Beautiful lake view room with modern amenities.' },
-                2: { room_number: '102', room_type: 'Premier Ocean View', floor_number: 1, capacity: 3, price_per_night: 220.00, description: 'Stunning ocean view with premium facilities.' },
-                3: { room_number: '201', room_type: 'Executive Suite', floor_number: 2, capacity: 4, price_per_night: 350.00, description: 'Luxurious suite with separate living area.' },
-                4: { room_number: '202', room_type: 'Deluxe Lake View', floor_number: 2, capacity: 2, price_per_night: 160.00, description: 'Comfortable room with lake view.' }
-            };
-
-            const room = sampleData[roomId];
-            if (room) {
-                document.getElementById('edit_room_id').value = roomId;
+function editRoom(roomId) {
+    fetch(`get_room.php?id=${roomId}`)
+        .then(res => res.json())
+        .then(res => {
+            if (res.success) {
+                const room = res.data;
+                document.getElementById('edit_room_id').value = room.id;
                 document.getElementById('edit_room_number').value = room.room_number;
                 document.getElementById('edit_room_type').value = room.room_type;
                 document.getElementById('edit_floor_number').value = room.floor_number;
@@ -737,381 +706,51 @@
                 document.getElementById('edit_price_per_night').value = room.price_per_night;
                 document.getElementById('edit_description').value = room.description;
 
-                const editModal = new bootstrap.Modal(document.getElementById('editRoomModal'));
-                editModal.show();
-            }
-        }
-
-        function deleteRoom(roomId) {
-            if (confirm('Are you sure you want to delete this room? This action cannot be undone.')) {
-                // In real application, send delete request to server
-                alert('Room deleted successfully!');
-                // Reload the page or update the table
-                location.reload();
-            }
-        }
-
-        function addRoom() {
-            const form = document.getElementById('addRoomForm');
-            const formData = new FormData(form);
-            
-            // In real application, send data to server
-            alert('Room added successfully!');
-            
-            // Close modal and reload page
-            const addModal = bootstrap.Modal.getInstance(document.getElementById('addRoomModal'));
-            addModal.hide();
-            location.reload();
-        }
-
-        function updateRoom() {
-            const form = document.getElementById('editRoomForm');
-            const formData = new FormData(form);
-            
-            // In real application, send update request to server
-            alert('Room updated successfully!');
-            
-            // Close modal and reload page
-            const editModal = bootstrap.Modal.getInstance(document.getElementById('editRoomModal'));
-            editModal.hide();
-            location.reload();
-        }
-
-        // Status change handler
-        document.addEventListener('change', function(e) {
-            if (e.target.classList.contains('form-select') && e.target.name === 'status') {
-                const roomId = e.target.getAttribute('data-room-id');
-                const status = e.target.value;
-                
-                // In real application, send status update to server
-                console.log(`Updating room ${roomId} status to ${status}`);
-                
-                // Show success message
-                const toast = document.createElement('div');
-                toast.className = 'toast-notification';
-                toast.innerHTML = `
-                    <div class="alert alert-success alert-dismissible fade show position-fixed" 
-                         style="top: 20px; right: 20px; z-index: 9999;">
-                        <i class="fas fa-check-circle me-2"></i>
-                        Room status updated successfully!
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                `;
-                document.body.appendChild(toast);
-                
-                // Auto remove after 3 seconds
-                setTimeout(() => {
-                    toast.remove();
-                }, 3000);
-            }
-        });
-
-        // Search functionality
-        function searchRooms() {
-            const searchInput = document.getElementById('roomSearch');
-            const searchTerm = searchInput.value.toLowerCase();
-            const tableRows = document.querySelectorAll('#roomsTable tbody tr');
-            
-            tableRows.forEach(row => {
-                const roomNumber = row.cells[0].textContent.toLowerCase();
-                const roomType = row.cells[1].textContent.toLowerCase();
-                const floor = row.cells[2].textContent.toLowerCase();
-                
-                if (roomNumber.includes(searchTerm) || 
-                    roomType.includes(searchTerm) || 
-                    floor.includes(searchTerm)) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
-            });
-        }
-
-        // Filter by status
-        function filterByStatus(status) {
-            const tableRows = document.querySelectorAll('#roomsTable tbody tr');
-            
-            tableRows.forEach(row => {
-                const statusSelect = row.querySelector('select[name="status"]');
-                const currentStatus = statusSelect.value;
-                
-                if (status === 'all' || currentStatus === status) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
-            });
-        }
-
-        // Export functionality
-        function exportRooms() {
-            // In real application, generate and download CSV/Excel file
-            alert('Exporting rooms data...');
-        }
-
-        // Print functionality
-        function printRooms() {
-            window.print();
-        }
-
-        // Bulk actions
-        function selectAllRooms() {
-            const checkboxes = document.querySelectorAll('input[name="room_select"]');
-            const selectAll = document.getElementById('selectAll');
-            
-            checkboxes.forEach(checkbox => {
-                checkbox.checked = selectAll.checked;
-            });
-            
-            updateBulkActions();
-        }
-
-        function updateBulkActions() {
-            const checkedBoxes = document.querySelectorAll('input[name="room_select"]:checked');
-            const bulkActions = document.getElementById('bulkActions');
-            
-            if (checkedBoxes.length > 0) {
-                bulkActions.style.display = 'block';
-            } else {
-                bulkActions.style.display = 'none';
-            }
-        }
-
-        function bulkStatusUpdate(status) {
-            const checkedBoxes = document.querySelectorAll('input[name="room_select"]:checked');
-            
-            if (checkedBoxes.length === 0) {
-                alert('Please select at least one room.');
-                return;
-            }
-            
-            if (confirm(`Are you sure you want to update ${checkedBoxes.length} room(s) to ${status} status?`)) {
-                checkedBoxes.forEach(checkbox => {
-                    const row = checkbox.closest('tr');
-                    const statusSelect = row.querySelector('select[name="status"]');
-                    statusSelect.value = status;
+                // Uncheck all first
+                document.querySelectorAll('.edit-facility-checkbox').forEach(cb => cb.checked = false);
+                // Then check only the facilities this room has
+                room.facilities.forEach(id => {
+                    const checkbox = document.getElementById(`edit_facility_${id}`);
+                    if (checkbox) checkbox.checked = true;
                 });
-                
-                alert(`${checkedBoxes.length} room(s) status updated to ${status}.`);
+
+                new bootstrap.Modal(document.getElementById('editRoomModal')).show();
+            } else {
+                alert("Failed to fetch room data: " + res.error);
             }
-        }
-
-        // Advanced search modal
-        function showAdvancedSearch() {
-            const advancedSearchModal = new bootstrap.Modal(document.getElementById('advancedSearchModal'));
-            advancedSearchModal.show();
-        }
-
-        function applyAdvancedSearch() {
-            const form = document.getElementById('advancedSearchForm');
-            const formData = new FormData(form);
-            
-            // In real application, apply advanced filters
-            console.log('Advanced search filters:', Object.fromEntries(formData));
-            
-            const advancedSearchModal = bootstrap.Modal.getInstance(document.getElementById('advancedSearchModal'));
-            advancedSearchModal.hide();
-            
-            alert('Advanced search filters applied!');
-        }
-
-        // Initialize tooltips
-        document.addEventListener('DOMContentLoaded', function() {
-            const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-            tooltips.forEach(tooltip => {
-                new bootstrap.Tooltip(tooltip);
-            });
+        })
+        .catch(err => {
+            console.error(err);
+            alert("An error occurred while fetching room data.");
         });
+}
 
-        // Real-time updates (simulate with WebSocket)
-        function simulateRealTimeUpdates() {
-            setInterval(() => {
-                // Simulate random status changes
-                const statuses = ['available', 'occupied', 'maintenance'];
-                const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
-                const randomRow = Math.floor(Math.random() * 4) + 1;
-                
-                const statusSelects = document.querySelectorAll('select[name="status"]');
-                if (statusSelects[randomRow - 1]) {
-                    statusSelects[randomRow - 1].value = randomStatus;
-                    
-                    // Update stats
-                    updateStats();
-                }
-            }, 30000); // Update every 30 seconds
-        }
-
-        function updateStats() {
-            const statusSelects = document.querySelectorAll('select[name="status"]');
-            let available = 0, occupied = 0, maintenance = 0;
-            
-            statusSelects.forEach(select => {
-                if (select.value === 'available') available++;
-                else if (select.value === 'occupied') occupied++;
-                else if (select.value === 'maintenance') maintenance++;
-            });
-            
-            // Update stat cards (if they exist)
-            const availableCard = document.querySelector('.text-success h3');
-            const occupiedCard = document.querySelector('.text-warning h3');
-            const maintenanceCard = document.querySelector('.text-danger h3');
-            
-            if (availableCard) availableCard.textContent = available;
-            if (occupiedCard) occupiedCard.textContent = occupied;
-            if (maintenanceCard) maintenanceCard.textContent = maintenance;
-        }
-
-        // Start real-time updates simulation
-        // simulateRealTimeUpdates();
-    </script>
-
-    <!-- Additional Styles for Enhanced UI -->
-    <style>
-        /* Print styles */
-        @media print {
-            #sidebar, #sidebarToggle, .modal, .btn {
-                display: none !important;
+function deleteRoom(roomId) {
+    if (confirm("Are you sure you want to delete this room? This action cannot be undone.")) {
+        fetch('delete_room.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `room_id=${roomId}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload(); // Reload to reflect deletion
+            } else {
+                alert("Error: " + data.error);
             }
-            
-            #content {
-                margin-left: 0 !important;
-                width: 100% !important;
-            }
-            
-            .card {
-                box-shadow: none !important;
-                border: 1px solid #dee2e6 !important;
-            }
-        }
+        })
+        .catch(error => {
+            console.error("Delete failed:", error);
+            alert("An error occurred while deleting the room.");
+        });
+    }
+}
 
-        /* Loading spinner */
-        .loading-spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #1d4ed8;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+</script>
 
-        /* Toast notifications */
-        .toast-notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 9999;
-        }
-
-        /* Enhanced table styles */
-        .table tbody tr:hover {
-            background-color: #f8f9fa;
-            transform: translateY(-1px);
-            transition: all 0.2s ease;
-        }
-
-        /* Status indicators */
-        .status-indicator {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 5px;
-        }
-
-        .status-available { background-color: #10b981; }
-        .status-occupied { background-color: #f59e0b; }
-        .status-maintenance { background-color: #ef4444; }
-
-        /* Smooth transitions */
-        * {
-            transition: color 0.2s ease, background-color 0.2s ease;
-        }
-
-        /* Custom scrollbar for sidebar */
-        #sidebar::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        #sidebar::-webkit-scrollbar-track {
-            background: #374151;
-        }
-
-        #sidebar::-webkit-scrollbar-thumb {
-            background: #6b7280;
-            border-radius: 3px;
-        }
-
-        #sidebar::-webkit-scrollbar-thumb:hover {
-            background: #9ca3af;
-        }
-
-        /* Enhanced button styles */
-        .btn {
-            border-radius: 6px;
-            font-weight: 500;
-            transition: all 0.2s ease;
-        }
-
-        .btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        /* Card hover effects */
-        .card {
-            transition: all 0.3s ease;
-        }
-
-        .card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-        }
-
-        /* Form enhancements */
-        .form-control:focus, .form-select:focus {
-            border-color: #1d4ed8;
-            box-shadow: 0 0 0 0.2rem rgba(29, 78, 216, 0.25);
-        }
-
-        /* Modal enhancements */
-        .modal-content {
-            border-radius: 12px;
-            border: none;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-        }
-
-        .modal-header {
-            border-bottom: 1px solid #e5e7eb;
-            border-radius: 12px 12px 0 0;
-        }
-
-        /* Animation classes */
-        .fade-in {
-            animation: fadeIn 0.5s ease-in;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Responsive table improvements */
-        @media (max-width: 768px) {
-            .table-responsive {
-                border-radius: 8px;
-            }
-            
-            .table th, .table td {
-                font-size: 0.875rem;
-                padding: 0.5rem;
-            }
-        }
-    </style>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
