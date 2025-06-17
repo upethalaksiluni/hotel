@@ -4,17 +4,41 @@ require_once 'config/database.php';
 
 $room_type = isset($_GET['type']) ? $_GET['type'] : '';
 
-// Get room details with facilities
+// Update the room query to properly handle room types
 $room_query = "SELECT r.*, GROUP_CONCAT(f.name) as facilities, GROUP_CONCAT(f.icon) as facility_icons
                FROM rooms r 
                LEFT JOIN room_facility_mapping rfm ON r.id = rfm.room_id 
-               LEFT JOIN room_facilities f ON rfm.facility_id = f.id 
-               WHERE r.room_type = ? AND r.status = 'available'
-               GROUP BY r.id";
+               LEFT JOIN room_facilities f ON rfm.facility_id = f.id";
+               
+if (!empty($room_type)) {
+    $room_query .= " WHERE r.room_type = ? AND r.status = 'available'";
+} else {
+    $room_query .= " WHERE r.status = 'available'";
+}
+
+$room_query .= " GROUP BY r.id";
+
 $stmt = $conn->prepare($room_query);
-$stmt->bind_param("s", $room_type);
+if (!empty($room_type)) {
+    $stmt->bind_param("s", $room_type);
+}
 $stmt->execute();
 $rooms = $stmt->get_result();
+
+function uploadRoomImage($file, $room_type) {
+    $target_dir = "../images/";
+    $file_extension = strtolower(pathinfo($file["name"], PATHINFO_EXTENSION));
+    $new_filename = strtolower(str_replace(' ', '-', $room_type)) . "." . $file_extension;
+    $target_file = $target_dir . $new_filename;
+    
+    // Check if file is an actual image
+    if (getimagesize($file["tmp_name"])) {
+        if (move_uploaded_file($file["tmp_name"], $target_file)) {
+            return $new_filename;
+        }
+    }
+    return false;
+}
 ?>
 
 <!DOCTYPE html>
@@ -26,6 +50,8 @@ $rooms = $stmt->get_result();
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .room-header {
             background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('images/rooms-bg.jpg');
@@ -74,10 +100,87 @@ $rooms = $stmt->get_result();
             position: sticky;
             top: 100px;
         }
+
+        .hero-slide {
+            transition: opacity 0.8s ease, transform 0.8s ease;
+        }
+        .slide-content {
+            transition: all 0.6s ease 0.3s;
+        }
+        .fade-in {
+            animation: fadeIn 1s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
     </style>
 </head>
 <body>
     <?php include 'includes/navbar.php'; ?>
+
+    <!-- Hero Slider -->
+    <div x-data="heroSlider()" class="relative overflow-hidden" @mouseenter="autoplay = false" @mouseleave="autoplay = true">
+        <div class="relative h-[80vh] min-h-[500px]">
+            <template x-for="(slide, index) in slides" :key="index">
+                <div 
+                    x-show="currentSlide === index"
+                    x-transition.opacity.duration.800ms
+                    class="absolute inset-0"
+                >
+                    <div class="absolute inset-0 bg-gray-800">
+                        <img 
+                            :src="slide.image" 
+                            :alt="slide.title"
+                            class="w-full h-full object-cover opacity-80"
+                            @error="replaceBrokenImage($event)"
+                            loading="lazy"
+                        >
+                    </div>
+                    
+                    <div class="container mx-auto px-6 h-full flex items-center">
+                        <div 
+                            class="max-w-2xl text-white slide-content"
+                            :class="{
+                                'translate-x-0 opacity-100': currentSlide === index,
+                                'translate-x-10 opacity-0': currentSlide !== index
+                            }"
+                        >
+                            <h2 x-text="slide.title" class="text-4xl md:text-5xl font-bold mb-4"></h2>
+                            <p x-text="slide.description" class="text-xl md:text-2xl mb-8"></p>
+                            <a 
+                                :href="slide.buttonUrl" 
+                                class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg text-lg font-semibold transition-colors fade-in"
+                                x-text="slide.buttonText"
+                            ></a>
+                        </div>
+                    </div>
+                </div>
+            </template>
+            
+            <!-- Navigation buttons -->
+            <button @click="prev()" class="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full w-10 h-10 md:w-12 md:h-12 flex items-center justify-center z-10 transition-all">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <button @click="next()" class="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full w-10 h-10 md:w-12 md:h-12 flex items-center justify-center z-10 transition-all">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+            
+            <!-- Indicators -->
+            <div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex space-x-2 z-10">
+                <template x-for="(slide, index) in slides" :key="index">
+                    <button
+                        @click="goTo(index)"
+                        class="w-2 h-2 md:w-3 md:h-3 rounded-full transition-all"
+                        :class="{
+                            'bg-white w-4 md:w-6': currentSlide === index,
+                            'bg-white/50': currentSlide !== index
+                        }"
+                    ></button>
+                </template>
+            </div>
+        </div>
+    </div>
 
     <!-- Room Header -->
     <div class="room-header text-center">
