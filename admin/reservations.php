@@ -627,21 +627,43 @@ body {
                 <h3>The Royal Grand Colombo Admin</h3>
             </div>
 
+            <!-- Update the sidebar navigation -->
             <ul class="list-unstyled components">
                 <li>
-                    <a href="index.html"><i class="fas fa-home"></i> Dashboard</a>
+                    <a href="index.php">
+                        <i class="fas fa-home"></i>
+                        <span>Dashboard</span>
+                    </a>
                 </li>
                 <li>
-                    <a href="rooms.php"><i class="fas fa-bed"></i> Rooms</a>
+                    <a href="rooms.php">
+                        <i class="fas fa-bed"></i>
+                        <span>Rooms</span>
+                    </a>
                 </li>
                 <li class="active">
-                    <a href="reservations.php"><i class="fas fa-calendar-alt"></i> Reservations</a>
+                    <a href="reservations.php">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span>Reservations</span>
+                    </a>
                 </li>
                 <li>
-                    <a href="facilities.php"><i class="fas fa-concierge-bell"></i> Facilities</a>
+                    <a href="facilities.php">
+                        <i class="fas fa-concierge-bell"></i>
+                        <span>Facilities</span>
+                    </a>
                 </li>
                 <li>
-                    <a href="../logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                    <a href="users.php">
+                        <i class="fas fa-users"></i>
+                        <span>Users</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="../logout.php">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Logout</span>
+                    </a>
                 </li>
             </ul>
         </nav>

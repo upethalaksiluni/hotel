@@ -1,3 +1,6 @@
+<?php
+session_start();
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -35,7 +38,7 @@
     <nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top">
         <div class="container">
             <a class="navbar-brand" href="#">
-                <img src="images/logo.png" alt="The Royal Grand Colombo Logo" height="50">
+                <img src="./images/logo.webp" alt="The Royal Grand Colombo Logo" height="50">
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -82,7 +85,24 @@
                         <a class="nav-link btn btn-primary text-white ms-2" href="#">BOOK NOW</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link btn btn-outline-primary ms-2" href="login.html">LOGIN</a>
+                        <?php if(isset($_SESSION['user_id'])): ?>
+        <div class="dropdown">
+            <a class="nav-link btn btn-outline-primary ms-2 dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                <i class="fas fa-user me-2"></i><?php echo htmlspecialchars($_SESSION['user_name']); ?>
+            </a>
+            <ul class="dropdown-menu">
+                <?php if($_SESSION['user_role'] === 'admin'): ?>
+                    <li><a class="dropdown-item" href="admin/dashboard.php">Admin Dashboard</a></li>
+                <?php else: ?>
+                    <li><a class="dropdown-item" href="user/dashboard.php">My Dashboard</a></li>
+                <?php endif; ?>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="logout.php">Logout</a></li>
+            </ul>
+        </div>
+    <?php else: ?>
+        <a class="nav-link btn btn-outline-primary ms-2" href="login.php">LOGIN</a>
+    <?php endif; ?>
                     </li>
                 </ul>
             </div>
@@ -91,8 +111,15 @@
 
     <!-- Hero Section -->
     <section class="hero-section">
+        <div class="video-background">
+            <video autoplay muted loop playsinline id="heroVideo">
+                <source src="./video/indexvideo.mp4" type="video/mp4">
+                
+            </video>
+            <div class="video-overlay"></div>
+        </div>
         <div class="hero-content text-center text-white">
-            <h1 class="display-1 fw-bold">The Royal Grand Colombo Colombo</h1>
+            <h1 class="display-1 fw-bold">The Royal Grand Colombo</h1>
             <p class="lead">A personal tropical sanctuary set within the heart of the city</p>
             <a href="#offers" class="btn btn-light btn-lg mt-3">View Offers</a>
         </div>
@@ -133,7 +160,7 @@
             <div class="row">
                 <div class="col-md-4 mb-4">
                     <div class="card offer-card">
-                        <img src="images/offer1.jpg" class="card-img-top" alt="Eat Play Love">
+                        <img src="images/room1.webp" class="card-img-top" alt="Eat Play Love">
                         <div class="card-body">
                             <h5 class="card-title">Eat Play Love with The Royal Grand Colombo</h5>
                             <p class="card-text">One stay. Three paths. Pick your pleasure in Colombo this summer.</p>
@@ -144,7 +171,7 @@
                 </div>
                 <div class="col-md-4 mb-4">
                     <div class="card offer-card">
-                        <img src="images/offer2.jpg" class="card-img-top" alt="Member Exclusive">
+                        <img src="images/room2.webp" class="card-img-top" alt="Member Exclusive">
                         <div class="card-body">
                             <h5 class="card-title">Members Online Exclusive Rate</h5>
                             <p class="card-text">Unlock exclusive member rates at The Royal Grand Colombo Colombo.</p>
@@ -155,7 +182,7 @@
                 </div>
                 <div class="col-md-4 mb-4">
                     <div class="card offer-card">
-                        <img src="images/offer3.jpg" class="card-img-top" alt="Dine & Save">
+                        <img src="images/room3.webp" class="card-img-top" alt="Dine & Save">
                         <div class="card-body">
                             <h5 class="card-title">Dine & Save with The Royal Grand Colombo Circle</h5>
                             <p class="card-text">Savour 20% savings at our signature dining venues.</p>
@@ -182,7 +209,7 @@
                     <a href="#" class="btn btn-primary mt-3">Learn More</a>
                 </div>
                 <div class="col-md-6">
-                    <img src="images/about.jpg" class="img-fluid rounded" alt="Hotel Exterior">
+                    <img src="images/about.webp" class="img-fluid rounded" alt="Hotel Exterior">
                 </div>
             </div>
         </div>
@@ -195,7 +222,7 @@
             <div class="row">
                 <div class="col-md-4 mb-4">
                     <div class="room-card">
-                        <img src="images/deluxe-lake.jpg" class="img-fluid rounded" alt="Deluxe Lake View">
+                        <img src="images/room1.webp" class="img-fluid rounded" alt="Deluxe Lake View">
                         <div class="room-content p-4">
                             <h4>Deluxe Lake View</h4>
                             <p>Spacious rooms with stunning views of Beira Lake and city skyline.</p>
@@ -210,7 +237,7 @@
                 </div>
                 <div class="col-md-4 mb-4">
                     <div class="room-card">
-                        <img src="images/premier-ocean.jpg" class="img-fluid rounded" alt="Premier Ocean View">
+                        <img src="images/room2.webp" class="img-fluid rounded" alt="Premier Ocean View">
                         <div class="room-content p-4">
                             <h4>Premier Ocean View</h4>
                             <p>Luxurious rooms with panoramic views of the Indian Ocean.</p>
@@ -225,7 +252,7 @@
                 </div>
                 <div class="col-md-4 mb-4">
                     <div class="room-card">
-                        <img src="images/executive-suite.jpg" class="img-fluid rounded" alt="Executive Suite">
+                        <img src="images/room3.webp" class="img-fluid rounded" alt="Executive Suite">
                         <div class="room-content p-4">
                             <h4>Executive Suite</h4>
                             <p>Elegant suite with separate living area and premium services.</p>
@@ -249,7 +276,7 @@
             <div class="row">
                 <div class="col-md-6 mb-4">
                     <div class="restaurant-card">
-                        <img src="images/shang-palace.jpg" class="img-fluid rounded" alt="Shang Palace">
+                        <img src="images/room4.webp" class="img-fluid rounded" alt="Shang Palace">
                         <div class="restaurant-content p-4">
                             <h4>Shang Palace</h4>
                             <p class="cuisine">Authentic Cantonese Cuisine</p>
@@ -264,7 +291,7 @@
                 </div>
                 <div class="col-md-6 mb-4">
                     <div class="restaurant-card">
-                        <img src="images/capital-bar.jpg" class="img-fluid rounded" alt="Capital Bar & Grill">
+                        <img src="images/room5.webp" class="img-fluid rounded" alt="Capital Bar & Grill">
                         <div class="restaurant-content p-4">
                             <h4>Capital Bar & Grill</h4>
                             <p class="cuisine">Steakhouse & Seafood</p>
@@ -288,7 +315,7 @@
             <div class="row">
                 <div class="col-md-4 mb-4">
                     <div class="experience-card">
-                        <img src="images/spa.jpg" class="img-fluid rounded" alt="Chi, The Spa">
+                        <img src="images/room3.webp" class="img-fluid rounded" alt="Chi, The Spa">
                         <div class="experience-content p-4">
                             <h4>Chi, The Spa</h4>
                             <p>Rejuvenate your body and mind with our signature treatments inspired by traditional Asian healing philosophies.</p>
@@ -303,7 +330,7 @@
                 </div>
                 <div class="col-md-4 mb-4">
                     <div class="experience-card">
-                        <img src="images/fitness.jpg" class="img-fluid rounded" alt="Health Club">
+                        <img src="images/gym.webp" class="img-fluid rounded" alt="Health Club">
                         <div class="experience-content p-4">
                             <h4>Health Club</h4>
                             <p>Stay active during your stay with our state-of-the-art fitness facilities and professional trainers.</p>
@@ -318,7 +345,7 @@
                 </div>
                 <div class="col-md-4 mb-4">
                     <div class="experience-card">
-                        <img src="images/kids.jpg" class="img-fluid rounded" alt="Adventure Zone">
+                        <img src="images/Adventure.webp" class="img-fluid rounded" alt="Adventure Zone">
                         <div class="experience-content p-4">
                             <h4>Adventure Zone</h4>
                             <p>Keep your little ones entertained with our exciting kids' club activities and facilities.</p>

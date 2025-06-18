@@ -3,10 +3,10 @@ session_start();
 
 // If user is already logged in, redirect to appropriate page
 if (isset($_SESSION['user_id'])) {
-    if ($_SESSION['user_role'] == 'admin') {
+    if ($_SESSION['user_role'] === 'admin') {
         header("Location: admin/index.php");
     } else {
-        header("Location: index.php");
+        header("Location: indexroot.php");
     }
     exit();
 }
@@ -69,7 +69,7 @@ if (isset($_SESSION['user_id'])) {
 <body>
     <div class="login-container">
         <div class="login-header">
-            <img src="images/logo.png" alt="The Royal Grand Colombo Logo">
+            <img src="./images/logo.webp" alt="The Royal Grand Colombo Logo">
             <h2>Welcome Back</h2>
             <p class="text-muted">Please login to your account</p>
         </div>
@@ -83,7 +83,7 @@ if (isset($_SESSION['user_id'])) {
         </div>
         <?php endif; ?>
 
-        <form action="process_login.php" method="POST">
+        <form action="process_login.php" method="POST" class="needs-validation" novalidate>
             <div class="mb-3">
                 <label for="email" class="form-label">Email address</label>
                 <input type="email" class="form-control" id="email" name="email" required>
@@ -101,5 +101,20 @@ if (isset($_SESSION['user_id'])) {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    (function () {
+        'use strict'
+        var forms = document.querySelectorAll('.needs-validation')
+        Array.prototype.slice.call(forms).forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault()
+                    event.stopPropagation()
+                }
+                form.classList.add('was-validated')
+            }, false)
+        })
+    })()
+    </script>
 </body>
-</html> 
+</html>

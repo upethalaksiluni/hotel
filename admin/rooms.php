@@ -306,6 +306,7 @@ $total_rooms = array_sum($stats);
                 <h3>The Royal Grand Colombo Admin</h3>
             </div>
 
+            <!-- Update the sidebar navigation -->
             <ul class="sidebar-nav">
                 <li>
                     <a href="index.php">
@@ -332,31 +333,18 @@ $total_rooms = array_sum($stats);
                     </a>
                 </li>
                 <li>
-                    <a href="guests.php">
+                    <a href="users.php">
                         <i class="fas fa-users"></i>
-                        <span>Guests</span>
+                        <span>Users</span>
                     </a>
                 </li>
-                <li>
-                    <a href="reports.php">
-                        <i class="fas fa-chart-bar"></i>
-                        <span>Reports</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="settings.php">
-                        <i class="fas fa-cog"></i>
-                        <span>Settings</span>
+                <li class="mt-auto border-t border-gray-800">
+                    <a href="../logout.php">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Logout</span>
                     </a>
                 </li>
             </ul>
-
-            <div class="sidebar-footer">
-                <a href="../logout.php">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Logout</span>
-                </a>
-            </div>
         </nav>
 
         <!-- Page Content -->

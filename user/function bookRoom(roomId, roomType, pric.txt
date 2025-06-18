@@ -1,0 +1,3 @@
+function bookRoom(roomId, roomType, pricePerNight, roomNumber) {
+    // ... (modal code as in your latest version) ...
+}

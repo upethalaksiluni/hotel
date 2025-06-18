@@ -333,6 +333,11 @@ $recent_result = $conn->query($recent_query);
                         <a class="nav-link" href="facilities.php">Facilities</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="users.php">
+                            Users
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="../logout.php">Logout</a>
                     </li>
                 </ul>
