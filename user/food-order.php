@@ -1,5 +1,7 @@
 <?php
 session_start();
+$check_in_filter = isset($_GET['check_in']) ? $_GET['check_in'] : '';
+$check_out_filter = isset($_GET['check_out']) ? $_GET['check_out'] : '';
 
 // Initialize cart if not exists
 if (!isset($_SESSION['cart'])) {
@@ -14,7 +16,7 @@ $menu_items = [
         'description' => 'Tender grilled chicken breast with herbs and spices',
         'price' => 18.99,
         'category' => 'Main Course',
-        'image' => 'chicken-breast.jpg'
+        'image' => 'images/chicken-breast.webp'
     ],
     [
         'id' => 2,
@@ -22,7 +24,7 @@ $menu_items = [
         'description' => 'Premium beef steak cooked to perfection',
         'price' => 24.99,
         'category' => 'Main Course',
-        'image' => 'beef-steak.jpg'
+        'image' => 'images/beef-steak.webp'
     ],
     [
         'id' => 3,
@@ -30,7 +32,7 @@ $menu_items = [
         'description' => 'Fresh romaine lettuce with Caesar dressing and croutons',
         'price' => 12.99,
         'category' => 'Salads',
-        'image' => 'caesar-salad.jpg'
+        'image' => 'images/caesar-salad.webp'
     ],
     [
         'id' => 4,
@@ -38,7 +40,7 @@ $menu_items = [
         'description' => 'Classic pizza with tomato, mozzarella, and basil',
         'price' => 16.99,
         'category' => 'Pizza',
-        'image' => 'margherita-pizza.jpg'
+        'image' => 'images/margherita-pizza.webp'
     ],
     [
         'id' => 5,
@@ -46,7 +48,7 @@ $menu_items = [
         'description' => 'Rich chocolate cake with chocolate frosting',
         'price' => 8.99,
         'category' => 'Desserts',
-        'image' => 'chocolate-cake.jpg'
+        'image' => 'images/chocolate-cake.webp'
     ],
     [
         'id' => 6,
@@ -54,7 +56,7 @@ $menu_items = [
         'description' => 'Freshly squeezed orange juice',
         'price' => 4.99,
         'category' => 'Beverages',
-        'image' => 'orange-juice.jpg'
+        'image' => 'images/orange-juice.webp'
     ],
     [
         'id' => 7,
@@ -62,7 +64,7 @@ $menu_items = [
         'description' => 'Delicious pasta with fresh seafood in creamy sauce',
         'price' => 22.99,
         'category' => 'Main Course',
-        'image' => 'seafood-pasta.jpg'
+        'image' => 'images/seafood-pasta.webp'
     ],
     [
         'id' => 8,
@@ -70,7 +72,7 @@ $menu_items = [
         'description' => 'Traditional Greek salad with feta cheese and olives',
         'price' => 13.99,
         'category' => 'Salads',
-        'image' => 'greek-salad.jpg'
+        'image' => 'images/greek-salad.webp'
     ]
 ];
 
@@ -170,6 +172,26 @@ foreach ($_SESSION['cart'] as $item) {
     $cart_total += $item['price'] * $item['quantity'];
     $cart_count += $item['quantity'];
 }
+
+// Check-in and Check-out date logic
+$min_check_in = date('Y-m-d');
+$min_check_out = date('Y-m-d', strtotime('+1 day'));
+
+$content = <<<HTML
+<div class="bg-white rounded-lg shadow p-6 mb-8">
+    <form class="grid grid-cols-1 md:grid-cols-4 gap-4" method="GET" action="">
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Check-in Date</label>
+            <input type="date" name="check_in" value="{$check_in_filter}" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" min="{$min_check_in}">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Check-out Date</label>
+            <input type="date" name="check_out" value="{$check_out_filter}" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" min="{$min_check_out}">
+        </div>
+        <!-- ...rest of your form... -->
+    </form>
+</div>
+HTML;
 ?>
 
 <!DOCTYPE html>

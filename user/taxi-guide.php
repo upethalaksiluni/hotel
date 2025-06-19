@@ -179,7 +179,7 @@ function sendBookingConfirmationEmail($data, $service, $bookingId, $totalPrice) 
     $headers .= "Reply-To: info@taxitour.com\r\n";
     $headers .= "X-Mailer: PHP/" . phpversion();
     
-    mail($to, $subject, $message, $headers);
+    // mail($to, $subject, $message, $headers);
 }
 
 // Get services and guides

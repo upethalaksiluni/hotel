@@ -162,7 +162,7 @@ if ($reservations->num_rows > 0) {
             <i class="fas fa-calendar-times text-4xl text-gray-400 mb-4"></i>
             <h4 class="text-lg font-medium text-gray-800 mb-2">No Reservations Yet</h4>
             <p class="text-gray-600 mb-4">You haven't made any bookings yet. Start exploring our rooms!</p>
-            <a href="room-booking.php" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+            <a href="./reservation.php" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
                 Book Your First Room
             </a>
         </div>

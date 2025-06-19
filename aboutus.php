@@ -83,11 +83,19 @@ $current_page = 'about.php';
     <!-- Include Header/Navbar -->
     <?php include 'includes/navbar.php'; ?>
 
-    <!-- Hero Section -->
-    <section class="about-hero">
-        <div class="container">
-            <h1 class="display-3 fw-bold">About Us</h1>
-            <p class="lead">Discover the story behind The Royal Grand Colombo</p>
+    <!-- Hero Section with Background Video -->
+    <section class="about-hero position-relative" style="height: 60vh; overflow: hidden;">
+        <!-- Background Video -->
+        <video autoplay loop muted playsinline class="w-100 h-100 position-absolute top-0 start-0 object-fit-cover" style="z-index:1; min-width:100%; min-height:100%; object-fit:cover;">
+            <source src="./video/indexvideo.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+        <!-- Overlay -->
+        <div class="position-absolute top-0 start-0 w-100 h-100" style="background: rgba(0,0,0,0.6); z-index:2;"></div>
+        <!-- Content -->
+        <div class="container position-relative" style="z-index:3;">
+            <h1 class="display-3 fw-bold text-white">About Us</h1>
+            <p class="lead text-white">Discover the story behind The Royal Grand Colombo</p>
         </div>
     </section>
 

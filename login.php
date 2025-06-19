@@ -96,7 +96,7 @@ if (isset($_SESSION['user_id'])) {
         </form>
         
         <div class="text-center mt-3">
-            <a href="index.php" class="text-decoration-none">Back to Home</a>
+            <a href="indexroot.php" class="text-decoration-none">Back to Home</a>
         </div>
     </div>
 

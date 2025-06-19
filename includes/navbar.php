@@ -24,7 +24,7 @@ $is_admin = isset($is_admin) ? $is_admin : false;
 <nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top">
     <div class="container">
         <a class="navbar-brand" href="index.php">
-            <img src="<?php echo $is_admin ? '../' : ''; ?>images/logo.png" alt="The Royal Grand Colombo" height="50">
+            <img src="<?php echo $is_admin ? '../' : ''; ?>./images/logo.webp" alt="The Royal Grand Colombo" height="50">
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
             <span class="navbar-toggler-icon"></span>
