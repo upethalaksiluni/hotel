@@ -69,6 +69,12 @@
                         <span class="ml-3">Contact</span>
                     </a>
                 </li>
+                <li class="px-6 py-3">
+                    <a href="taxi-guide.php" class="flex items-center text-gray-400 hover:text-white transition-colors">
+                        <i class="fas fa-taxi w-5"></i>
+                        <span class="ml-3">Taxi & Guide</span>
+                    </a>
+                </li>
                 <li class="px-6 py-3 mt-auto">
                     <a href="../logout.php" class="flex items-center text-red-400 hover:text-red-300 transition-colors">
                         <i class="fas fa-sign-out-alt w-5"></i>

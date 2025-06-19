@@ -15,40 +15,110 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $special_requests = trim($_POST['special_requests'] ?? '');
     $user_id = $_SESSION['user_id'];
 
-    // Validate dates
-    if (empty($check_in) || empty($check_out) || strtotime($check_out) <= strtotime($check_in)) {
-        $_SESSION['error'] = "Invalid check-in or check-out date.";
+    // Basic validation
+    if (empty($check_in) || empty($check_out)) {
+        $_SESSION['error'] = "Please select both check-in and check-out dates.";
         header('Location: room-booking.php');
         exit();
     }
 
-    // Check room availability
-    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM reservations WHERE room_id = ? AND status IN ('pending','confirmed') AND NOT (check_out_date <= ? OR check_in_date >= ?)");
-    $stmt->bind_param("iss", $room_id, $check_in, $check_out);
-    $stmt->execute();
-    $result = $stmt->get_result()->fetch_assoc();
-    if ($result['count'] > 0) {
-        $_SESSION['error'] = "Room is not available for the selected dates.";
+    // Check if check-out date is after check-in date
+    if (strtotime($check_out) <= strtotime($check_in)) {
+        $_SESSION['error'] = "Check-out date must be after check-in date.";
         header('Location: room-booking.php');
         exit();
     }
 
-    // Get price per night
-    $stmt = $conn->prepare("SELECT price_per_night FROM rooms WHERE id = ?");
-    $stmt->bind_param("i", $room_id);
-    $stmt->execute();
-    $room = $stmt->get_result()->fetch_assoc();
-    $nights = (strtotime($check_out) - strtotime($check_in)) / (60 * 60 * 24);
-    $total_price = $room['price_per_night'] * $nights;
+    // Check if dates are not in the past
+    if (strtotime($check_in) < strtotime(date('Y-m-d'))) {
+        $_SESSION['error'] = "Check-in date cannot be in the past.";
+        header('Location: room-booking.php');
+        exit();
+    }
 
-    // Insert reservation
-    $stmt = $conn->prepare("INSERT INTO reservations (room_id, user_id, check_in_date, check_out_date, total_price, status, special_requests) VALUES (?, ?, ?, ?, ?, 'pending', ?)");
-    $stmt->bind_param("iissds", $room_id, $user_id, $check_in, $check_out, $total_price, $special_requests);
-    $stmt->execute();
+    try {
+        // Start transaction
+        $conn->begin_transaction();
 
-    $_SESSION['success'] = "Room booked successfully!";
-    header('Location: dashboard.php');
-    exit();
+        // Check room availability - Fixed the date overlap logic
+        $availability_query = "SELECT COUNT(*) as count FROM reservations 
+                             WHERE room_id = ? AND status IN ('pending', 'confirmed')
+                             AND NOT (check_out_date <= ? OR check_in_date >= ?)";
+        
+        $stmt = $conn->prepare($availability_query);
+        $stmt->bind_param("iss", $room_id, $check_in, $check_out);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $availability = $result->fetch_assoc();
+
+        if ($availability['count'] > 0) {
+            throw new Exception("Room is not available for the selected dates");
+        }
+
+        // Get room details and verify it exists
+        $room_query = "SELECT price_per_night, room_type, room_number FROM rooms WHERE id = ? AND status = 'available'";
+        $stmt = $conn->prepare($room_query);
+        $stmt->bind_param("i", $room_id);
+        $stmt->execute();
+        $room_result = $stmt->get_result();
+        
+        if ($room_result->num_rows === 0) {
+            throw new Exception("Selected room is not available");
+        }
+        
+        $room = $room_result->fetch_assoc();
+
+        // Calculate total price
+        $check_in_date = new DateTime($check_in);
+        $check_out_date = new DateTime($check_out);
+        $nights = $check_in_date->diff($check_out_date)->days;
+        
+        if ($nights <= 0) {
+            throw new Exception("Invalid date range");
+        }
+        
+        $total_price = $room['price_per_night'] * $nights;
+
+        // Get user details for the reservation
+        $user_query = "SELECT name, email, phone FROM users WHERE id = ?";
+        $stmt = $conn->prepare($user_query);
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $user_result = $stmt->get_result();
+        $user = $user_result->fetch_assoc();
+
+        if (!$user) {
+            throw new Exception("User not found");
+        }
+
+        // Insert reservation with user details
+        $insert_query = "INSERT INTO reservations (user_id, room_id, check_in_date, check_out_date, 
+                        guest_name, guest_email, guest_phone, total_price, special_requests, status, created_at) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())";
+        
+        $stmt = $conn->prepare($insert_query);
+        $guest_phone = $user['phone'] ?? '';
+        $stmt->bind_param("iissssds", $user_id, $room_id, $check_in, $check_out, 
+                         $user['name'], $user['email'], $guest_phone, $total_price, $special_requests);
+        
+        if (!$stmt->execute()) {
+            throw new Exception("Failed to create reservation: " . $stmt->error);
+        }
+
+        $reservation_id = $conn->insert_id;
+
+        $conn->commit();
+        
+        $_SESSION['success'] = "Room booked successfully! Your reservation ID is #" . $reservation_id . ". Your booking is pending confirmation and you will be notified once confirmed.";
+        header('Location: dashboard.php');
+        exit();
+
+    } catch (Exception $e) {
+        $conn->rollback();
+        $_SESSION['error'] = $e->getMessage();
+        header('Location: room-booking.php');
+        exit();
+    }
 } else {
     header('Location: room-booking.php');
     exit();

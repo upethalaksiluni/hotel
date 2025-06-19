@@ -84,6 +84,12 @@ $current_page = basename($_SERVER['PHP_SELF']);
                         <span class="ml-3">Contact</span>
                     </a>
                 </li>
+                <li class="px-6 py-3">
+                    <a href="taxi-guide.php" class="flex items-center <?php echo $current_page === 'taxi-guide.php' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white'; ?> transition-colors">
+                        <i class="fas fa-taxi w-5"></i>
+                        <span class="ml-3">Taxi & Guide</span>
+                    </a>
+                </li>
                 <li class="px-6 py-3 mt-auto">
                     <a href="../logout.php" class="flex items-center text-red-400 hover:text-red-300 transition-colors">
                         <i class="fas fa-sign-out-alt w-5"></i>
@@ -108,6 +114,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                             case 'profile.php': echo 'My Profile'; break;
                             case 'about.php': echo 'About Us'; break;
                             case 'contact.php': echo 'Contact'; break;
+                            case 'taxi-guide.php': echo 'Taxi & Guide'; break;
                             default: echo 'Dashboard'; break;
                         }
                         ?>

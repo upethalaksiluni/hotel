@@ -79,6 +79,12 @@
                             <span>Contact</span>
                         </a>
                     </li>
+                    <li>
+                        <a href="taxi-guide.php" class="hover:text-white transition-colors flex items-center">
+                            <i class="fas fa-taxi w-5"></i>
+                            <span>Taxi & Guide</span>
+                        </a>
+                    </li>
                 </ul>
             </div>
 
